@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+</head>
+
+<script id="vertex-shader" type="x-shader/x-vertex">
+
+attribute  vec4 vPosition;
+attribute  vec4 vColor;
+varying vec4 fColor;    
+
+uniform mat4 projectionMatrix;
+uniform mat4 uMVMatrix;
+uniform mat4 objectTransformation;
+
+
+void main()
+{
+    fColor = vColor;
+    gl_Position = projectionMatrix * uMVMatrix * objectTransformation  * vPosition;
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+
+precision mediump float;
+
+varying vec4 fColor;
+
+void
+main()
+{
+    gl_FragColor = fColor;
+    //gl_FragColor = vec4(1.0,0,0,1.0);
+}
+</script>
+
+<script type="text/javascript" src="../Common/webgl-utils.js"></script>
+<script type="text/javascript" src="../Common/initShaders.js"></script>
+<script type="text/javascript" src="../Common/MV.js"></script>
+<script type="text/javascript" src="escena.js"></script>
+<script type="text/javascript" src="sphere.js"></script>
+<script type="text/javascript" src="revolucio.js"></script>
+
+<body>
+<canvas id="gl-canvas" width="1244" height="700">
+Oops ... your browser doesn't support the HTML5 canvas element
+</canvas>
+
+<br/>  
+Use the cursor keys or WASD to run around, and <code>Page Up</code>/<code>Page Down</code> to
+look up and down.
+
+<p>
+<!--
+<button id= "xButton">Debug</button>
+-->
+
+</body>
+</html>
