@@ -286,7 +286,10 @@ function render()
     gl.vertexAttribPointer(vertexPos, 4, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(vertexPos);
 
+   
     gl.drawArrays( gl.TRIANGLES, 0, numVertex1 );
+    //gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+    // per si necessitem fer un buffer d'elements (ns en q es diferencien)
 
     //drawing the 3d obejcts
     for(var i=0;i<objects3d.length;i++)
