@@ -6,8 +6,10 @@ class Sphere{
         this.program = program;
         this.cBuffer = undefined;
         this.vBuffer = undefined;
+        this.tBuffer = undefined;
         this.points = [];
         this.colors = [];
+        this.textureCoords = [];
         this.numVertexSphere = 0;
         this.scaleMatrix = mat4();
         this.translationMatrix = mat4();
@@ -30,6 +32,10 @@ class Sphere{
         gl.bindBuffer( gl.ARRAY_BUFFER, this.vBuffer );
         gl.bufferData( gl.ARRAY_BUFFER, flatten(this.points), gl.STATIC_DRAW );
 
+        this.tBuffer = gl.createBuffer();
+        gl.bindBuffer( gl.ARRAY_BUFFER, this.tBuffer );
+        gl.bufferData( gl.ARRAY_BUFFER, flatten(this.textureCoords), gl.STATIC_DRAW );
+
     }
 
     triangle(a, b, c) {
@@ -40,6 +46,9 @@ class Sphere{
         this.colors.push(col); 
         this.colors.push(col);
         this.colors.push(col);
+        this.textureCoords.push(vec2(0, 0))
+        this.textureCoords.push(vec2(0, 0))
+        this.textureCoords.push(vec2(0, 0))
         this.numVertexSphere += 3;
     }
 
@@ -104,6 +113,11 @@ class Sphere{
         let vertexColor = gl.getAttribLocation( this.program, "vColor" );
         gl.vertexAttribPointer( vertexColor, 4, gl.FLOAT, false, 0, 0 );
         gl.enableVertexAttribArray( vertexColor );
+
+        gl.bindBuffer( gl.ARRAY_BUFFER, this.tBuffer  );
+        let vertexTexture = gl.getAttribLocation( this.program, "vTexCoord" );
+        gl.vertexAttribPointer( vertexTexture, 2, gl.FLOAT, false, 0, 0 );
+        gl.enableVertexAttribArray( vertexTexture );
 
         gl.drawArrays( gl.LINES, 0, this.numVertexSphere );
     }

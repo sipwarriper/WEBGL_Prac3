@@ -12,12 +12,16 @@ var objects3d = [];//set of all of the 3d objects to draw
 var numVertex1 = 0;
 var points1 = [];
 var colors1 = [];
+var texCoordsArray = [];
 var cBuffer1, vColor1, vBuffer1;
+var textBuffer;
 
 
 var mvMatrixLoc;
 var projectionMatrixLoc;
 var objectTransformationLoc;
+var uniformUseTextureBoolean;
+var textureUniform;
 
 var black = [ 0.0, 0.0, 0.0, 1.0 ]; 
 var red = [ 1.0, 0.0, 0.0, 1.0 ]; 
@@ -44,6 +48,7 @@ function onLoad(){
     if ( !gl ) { alert( "WebGL isn't available" ); }
 
     crearMapa();
+    initTextures()
 
     gl.viewport( 0, 0, canvas.width, canvas.height );
     var clearColor = black;
@@ -65,9 +70,17 @@ function onLoad(){
     gl.bindBuffer( gl.ARRAY_BUFFER, vBuffer1 );
     gl.bufferData( gl.ARRAY_BUFFER, flatten(points1), gl.STATIC_DRAW );
 
+    textBuffer = gl.createBuffer();
+    gl.bindBuffer( gl.ARRAY_BUFFER, textBuffer );
+    gl.bufferData( gl.ARRAY_BUFFER, flatten(texCoordsArray), gl.STATIC_DRAW );
+
+
+    
 	mvMatrixLoc = gl.getUniformLocation(program, "uMVMatrix");
     projectionMatrixLoc = gl.getUniformLocation(program, "projectionMatrix");
     objectTransformationLoc = gl.getUniformLocation(program, "objectTransformation");
+    uniformUseTextureBoolean = gl.getUniformLocation(program, "useTexture");
+    textureUniform = gl.getUniformLocation(program, "texture");
 
     var sphere = new Sphere(gl, program, 4, black);
     sphere.setScale(0.25,0.25,0.25);
@@ -118,7 +131,6 @@ function crearMapa(){
 
     var size=1.25;
     var sizeX=size, sizeY=size, sizeZ=size;
-
     quad( //terra
         vec4(-sizeX+x,-sizeY+y, sizeZ+z,1.0),
         vec4(-sizeX+x,-sizeY+y,-sizeZ+z,1.0),
@@ -158,11 +170,25 @@ function crearMapa(){
 
 function quad(p1, p2, p3, p4, color){
     var vertices = [ p1, p2, p3, p2, p3, p4];
+
+    var texCoord = [
+        vec2(0, 0),
+        vec2(0, 1),
+        vec2(1, 1),
+        vec2(1, 0)
+    ];
+
     for(var i=0;i<vertices.length;i++){
         points1.push(vertices[i]);
         colors1.push(color);
         numVertex1++;
     }
+    texCoordsArray.push(texCoord[0]);
+    texCoordsArray.push(texCoord[1]);
+    texCoordsArray.push(texCoord[3]);
+    texCoordsArray.push(texCoord[1]);
+    texCoordsArray.push(texCoord[3]);
+    texCoordsArray.push(texCoord[2]);
 }
 
 //Interacció WASD
@@ -241,6 +267,48 @@ function animate() {
     lastTime = timeNow;
 }
 
+
+
+
+//Handling textures!
+function handleLoadedTexture(texture) {
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+    gl.generateMipmap(gl.TEXTURE_2D);
+
+    gl.bindTexture(gl.TEXTURE_2D, null);
+}
+
+var earthTexture;
+var galvanizedTexture;
+var bananaTexture;
+
+function initTextures() {
+    earthTexture = gl.createTexture();
+    earthTexture.image = new Image();
+    earthTexture.image.onload = function () {
+        handleLoadedTexture(earthTexture)
+    }
+    earthTexture.image.src = "earth.jpg";
+
+    galvanizedTexture = gl.createTexture();
+    galvanizedTexture.image = new Image();
+    galvanizedTexture.image.onload = function () {
+        handleLoadedTexture(galvanizedTexture)
+    }
+    galvanizedTexture.image.src = "arroway.de_metal+structure+06_d100_flat.jpg";
+
+    bananaTexture = gl.createTexture();
+    bananaTexture.image = new Image();
+    bananaTexture.image.onload = function () {
+        handleLoadedTexture(bananaTexture)
+    }
+    bananaTexture.image.src = "Banana.jpg";
+}
+
 //Render
 var mvMatrix = mat4();
 var Identity = mat4();
@@ -286,14 +354,29 @@ function render()
     gl.vertexAttribPointer(vertexPos, 4, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(vertexPos);
 
+    gl.bindBuffer( gl.ARRAY_BUFFER, textBuffer );
+    let vTexCoord = gl.getAttribLocation( program, "vTexCoord" );
+    gl.vertexAttribPointer( vTexCoord, 2, gl.FLOAT, false, 0, 0 );
+    gl.enableVertexAttribArray( vTexCoord );
+
+
+    //carraguem textures
+    gl.uniform1i(textureUniform, 0);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, galvanizedTexture);
+    gl.uniform1i(uniformUseTextureBoolean, 1);
+
    
     gl.drawArrays( gl.TRIANGLES, 0, numVertex1 );
     //gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
     // per si necessitem fer un buffer d'elements (ns en q es diferencien)
 
     //drawing the 3d obejcts
-    for(var i=0;i<objects3d.length;i++)
+    for(var i=0;i<objects3d.length;i++){
+        gl.uniform1i(uniformUseTextureBoolean, 0); //no volem textures en els cosos 3d d'aquí        
         objects3d[i].draw();
+    }
+        
 
     animate();
 
