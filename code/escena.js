@@ -87,14 +87,15 @@ function onLoad(){
     sphere.setTranslation(0.7,-0.7,-0.5);
     objects3d.push(sphere);
 
-    //bol
-    var revSolid = new cosRevolucio(gl, program, (x=>x), (x => x*x+1), 14, 140, magenta);
-    revSolid.setScale(0.3,0.3,0.3);
-    revSolid.setTranslation(0.5,0.3,0);
-    objects3d.push(revSolid);
+    //pistola
+    var pistola = new ObjFileObject(gl,program, "M1911.json" ,earthTexture)
+    pistola.setScale(0.1,0.1,0.1);
+    pistola.setTranslation(0.1,0.1,0);
+    pistola.addRotation(90,[0,1,0])
+    objects3d.push(pistola);
 
     //cilindre
-    revSolid = new cosRevolucio(gl, program, (x=>1), (x => x), 14, 140, green);
+    var revSolid = new cosRevolucio(gl, program, (x=>1), (x => x), 14, 140, green);
     revSolid.setScale(0.3,0.3,0.3);
     revSolid.setTranslation(-0.4,0.6,-0.5);
     revSolid.addRotation(20, [0,0,1]);
@@ -132,38 +133,38 @@ function crearMapa(){
     var size=1.25;
     var sizeX=size, sizeY=size, sizeZ=size;
     quad( //terra
-        vec4(-sizeX+x,-sizeY+y, sizeZ+z,1.0),
-        vec4(-sizeX+x,-sizeY+y,-sizeZ+z,1.0),
-        vec4( sizeX+x,-sizeY+y, sizeZ+z,1.0),
-        vec4( sizeX+x,-sizeY+y,-sizeZ+z,1.0),
+        vec3(-sizeX+x,-sizeY+y, sizeZ+z),
+        vec3(-sizeX+x,-sizeY+y,-sizeZ+z),
+        vec3( sizeX+x,-sizeY+y, sizeZ+z),
+        vec3( sizeX+x,-sizeY+y,-sizeZ+z),
         blue
     );
     quad( //paret esquerra
-        vec4(-sizeX+x,-sizeY+y, sizeZ+z,1.0),
-        vec4(-sizeX+x,-sizeY+y,-sizeZ+z,1.0),
-        vec4(-sizeX+x, sizeY+y, sizeZ+z,1.0),
-        vec4(-sizeX+x, sizeY+y,-sizeZ+z,1.0),
+        vec3(-sizeX+x,-sizeY+y, sizeZ+z),
+        vec3(-sizeX+x,-sizeY+y,-sizeZ+z),
+        vec3(-sizeX+x, sizeY+y, sizeZ+z),
+        vec3(-sizeX+x, sizeY+y,-sizeZ+z),
         red
     );
     quad( //paret dreta
-        vec4( sizeX+x,-sizeY+y, sizeZ+z,1.0),
-        vec4( sizeX+x,-sizeY+y,-sizeZ+z,1.0),
-        vec4( sizeX+x, sizeY+y, sizeZ+z,1.0),
-        vec4( sizeX+x, sizeY+y,-sizeZ+z,1.0),
+        vec3( sizeX+x,-sizeY+y, sizeZ+z),
+        vec3( sizeX+x,-sizeY+y,-sizeZ+z),
+        vec3( sizeX+x, sizeY+y, sizeZ+z),
+        vec3( sizeX+x, sizeY+y,-sizeZ+z),
         orange
     );
     quad( //paret anterior
-        vec4(-sizeX+x,-sizeY+y,-sizeZ+z,1.0),
-        vec4(-sizeX+x, sizeY+y,-sizeZ+z,1.0),
-        vec4( sizeX+x,-sizeY+y,-sizeZ+z,1.0),
-        vec4( sizeX+x, sizeY+y,-sizeZ+z,1.0),
+        vec3(-sizeX+x,-sizeY+y,-sizeZ+z),
+        vec3(-sizeX+x, sizeY+y,-sizeZ+z),
+        vec3( sizeX+x,-sizeY+y,-sizeZ+z),
+        vec3( sizeX+x, sizeY+y,-sizeZ+z),
         yellow
     );
     quad( //sostre
-        vec4(-sizeX+x, sizeY+y,-sizeZ+z,1.0),
-        vec4(-sizeX+x, sizeY+y, sizeZ+z,1.0),
-        vec4( sizeX+x, sizeY+y,-sizeZ+z,1.0),
-        vec4( sizeX+x, sizeY+y, sizeZ+z,1.0),
+        vec3(-sizeX+x, sizeY+y,-sizeZ+z),
+        vec3(-sizeX+x, sizeY+y, sizeZ+z),
+        vec3( sizeX+x, sizeY+y,-sizeZ+z),
+        vec3( sizeX+x, sizeY+y, sizeZ+z),
         cyan
     );
 }
@@ -214,11 +215,9 @@ function handleKeys() {
 	if (currentlyPressedKeys[33]) {
 		// Page Up
 		pitchRate = 0.1;
-        console.log(pitch);
 	} else if (currentlyPressedKeys[34]) {
 		// Page Down
 		pitchRate = -0.1;
-        console.log(pitch);
 	} else {
 		pitchRate = 0;
 	}
@@ -351,7 +350,7 @@ function render()
 
     gl.bindBuffer( gl.ARRAY_BUFFER, vBuffer1 );
     let vertexPos = gl.getAttribLocation(program, "vPosition");
-    gl.vertexAttribPointer(vertexPos, 4, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(vertexPos, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(vertexPos);
 
     gl.bindBuffer( gl.ARRAY_BUFFER, textBuffer );
