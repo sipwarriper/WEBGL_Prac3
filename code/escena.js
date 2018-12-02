@@ -15,6 +15,7 @@ var colors1 = [];
 var texCoordsArray = [];
 var cBuffer1, vColor1, vBuffer1;
 var textBuffer;
+var normalBuffer;
 
 
 var mvMatrixLoc;
@@ -22,6 +23,17 @@ var projectionMatrixLoc;
 var objectTransformationLoc;
 var uniformUseTextureBoolean;
 var textureUniform;
+var uNMatrix;
+
+var materialShininessUniform;
+var showSpecularHighlightsUniform;
+
+var useLightingUniform;
+var ambientColorUniform;
+var ambientColorUniform;
+var pointLightingLocationUniform;
+var pointLightingSpecularColorUniform;
+var pointLightingDiffuseColorUniform;
 
 var black = [ 0.0, 0.0, 0.0, 1.0 ]; 
 var red = [ 1.0, 0.0, 0.0, 1.0 ]; 
@@ -48,7 +60,8 @@ function onLoad(){
     if ( !gl ) { alert( "WebGL isn't available" ); }
 
     crearMapa();
-    initTextures()
+    initTextures();
+    computeNormals();
 
     gl.viewport( 0, 0, canvas.width, canvas.height );
     var clearColor = black;
@@ -74,6 +87,10 @@ function onLoad(){
     gl.bindBuffer( gl.ARRAY_BUFFER, textBuffer );
     gl.bufferData( gl.ARRAY_BUFFER, flatten(texCoordsArray), gl.STATIC_DRAW );
 
+    normalBuffer = gl.createBuffer();
+    gl.bindBuffer( gl.ARRAY_BUFFER, normalBuffer );
+    gl.bufferData( gl.ARRAY_BUFFER, flatten(normalVertices), gl.STATIC_DRAW );
+
 
     
 	mvMatrixLoc = gl.getUniformLocation(program, "uMVMatrix");
@@ -81,47 +98,29 @@ function onLoad(){
     objectTransformationLoc = gl.getUniformLocation(program, "objectTransformation");
     uniformUseTextureBoolean = gl.getUniformLocation(program, "useTexture");
     textureUniform = gl.getUniformLocation(program, "texture");
-
-    var sphere = new Sphere(gl, program, 4, black);
-    sphere.setScale(0.25,0.25,0.25);
-    sphere.setTranslation(0.7,-0.7,-0.5);
-    objects3d.push(sphere);
-
-    //pistola
-    var pistola = new ObjFileObject(gl,program, "M1911.json" ,earthTexture)
-    pistola.setScale(0.1,0.1,0.1);
-    pistola.setTranslation(0.1,0.1,0);
-    pistola.addRotation(90,[0,1,0])
-    objects3d.push(pistola);
-
-    //cilindre
-    var revSolid = new cosRevolucio(gl, program, (x=>1), (x => x), 14, 140, green);
-    revSolid.setScale(0.3,0.3,0.3);
-    revSolid.setTranslation(-0.4,0.6,-0.5);
-    revSolid.addRotation(20, [0,0,1]);
-    revSolid.addRotation(40, [1,0,0]);
-    objects3d.push(revSolid);
-
-    //copa martini
-    var xvalues = [0,1,0.1,0.1,0.3,0.3];
-    var yvalues = [1,1,0,-0.9,-0.9,-1];
-    revSolid = new cosRevolucio(gl, program, xvalues, yvalues, xvalues.length, 140, cyan);
-    revSolid.setScale(0.3,0.3,0.3);
-    revSolid.setTranslation(-0.7,-0.7,-0.5);
-    objects3d.push(revSolid);
-
-    var t1 = 0, t2 = -0.7, t3 = -0.5;
-
-    revSolid = new cosRevolucio(gl, program, (x=>x),(x => x), 14, 140, [0.2,0.6,0,1]);
-    revSolid.setScale(0.3,0.3,0.3);
-    revSolid.setTranslation(t1,t2,t3);
-    objects3d.push(revSolid);    
+    uNMatrix = gl.getUniformLocation(program, "uNMatrix");
 
 
-    revSolid = new cosRevolucio(gl, program, (x=>x),(x => -x), 14, 140, [0.2,0.8,0,1]);
-    revSolid.setScale(0.3,0.3,0.3);
-    revSolid.setTranslation(t1,t2,t3);
-    objects3d.push(revSolid);    
+    materialShininessUniform = gl.getUniformLocation(program, "uMaterialShininess");
+    showSpecularHighlightsUniform = gl.getUniformLocation(program, "uShowSpecularHighlights");
+
+    useLightingUniform = gl.getUniformLocation(program, "uUseLighting");
+    ambientColorUniform = gl.getUniformLocation(program, "uAmbientColor");
+    pointLightingLocationUniform = gl.getUniformLocation(program, "uPointLightingLocation");
+    pointLightingSpecularColorUniform = gl.getUniformLocation(program, "uPointLightingSpecularColor")
+    pointLightingDiffuseColorUniform = gl.getUniformLocation(program, "uPointLightingDiffuseColor");
+
+    //objecteObj
+    var objecteObj = new ObjFileObject(gl,program, "M1911.json" ,earthTexture)
+    objecteObj.setScale(0.1,0.1,0.1);
+    objecteObj.setTranslation(0.1,0.1,0);
+    objecteObj.addRotation(90,[0,1,0])
+    objects3d.push(objecteObj);
+
+    objecteObj = new ObjFileObject(gl,program, "Banana.json" ,bananaTexture)
+    objecteObj.setScale(0.3,0.3,0.3);
+    objecteObj.setTranslation(-0.7,-0.7,-0.5);
+    objects3d.push(objecteObj);
 
     render();
 }
@@ -169,6 +168,40 @@ function crearMapa(){
     );
 }
 
+class Face{
+    constructor(vec1, vec2, vec3){
+        this.vec1 = vec1;
+        this.vec2 = vec2;
+        this.vec3 = vec3;
+        this.normal = undefined;
+        this.calculateNormal();
+    }
+    getNormal(){
+        return this.normal
+    }
+    calculateNormal(){
+        let comp1 = vec3((this.vec2[0]-this.vec1[0]),
+                         (this.vec2[1]-this.vec1[1]),
+                         (this.vec2[2]-this.vec1[2]));
+        let comp2 = vec3((this.vec3[0]-this.vec1[0]),
+                         (this.vec3[1]-this.vec1[1]),
+                         (this.vec3[2]-this.vec1[2]));
+        let normX = comp1[1]*comp2[2] - comp1[2]*comp2[1];
+        let normY = comp1[2]*comp2[0] - comp1[0]*comp2[2];
+        let normZ = comp1[0]*comp2[1] - comp1[1]*comp2[0];
+        this.normal = vec3(normX,normY,normZ);
+    }
+    contains(vector){
+        let bool1 = (this.vec1[0] == vector[0]) && (this.vec1[1] == vector[1]) && (this.vec1[2] == vector[2]);
+        let bool2 = (this.vec2[0] == vector[0]) && (this.vec2[1] == vector[1]) && (this.vec2[2] == vector[2]);
+        let bool3 = (this.vec3[0] == vector[0]) && (this.vec3[1] == vector[1]) && (this.vec3[2] == vector[2]);
+        return bool1||bool2||bool3;
+    }
+
+}
+
+var FaceVec = []
+
 function quad(p1, p2, p3, p4, color){
     var vertices = [ p1, p2, p3, p2, p3, p4];
 
@@ -184,12 +217,36 @@ function quad(p1, p2, p3, p4, color){
         colors1.push(color);
         numVertex1++;
     }
+    FaceVec.push(new Face(p1,p2,p3));
+    FaceVec.push(new Face(p2,p3,p4));
     texCoordsArray.push(texCoord[0]);
     texCoordsArray.push(texCoord[1]);
     texCoordsArray.push(texCoord[3]);
     texCoordsArray.push(texCoord[1]);
     texCoordsArray.push(texCoord[3]);
     texCoordsArray.push(texCoord[2]);
+}
+
+var normalVertices = [];
+
+function computeNormals(){
+    for(var i =0; i<points1.length; i++){
+        let faces = [];
+        for(var j = 0; j<FaceVec.length; j++){
+            if (FaceVec[j].contains(points1[i])) faces.push(FaceVec[j]);
+        }
+        let vertexNormX = 0;
+        let vertexNormY = 0;
+        let vertexNormZ = 0;
+        for (var j = 0; j<faces.length; j++){
+            let normal = faces[j].getNormal();
+            vertexNormX+= normal[0];
+            vertexNormY+= normal[1];
+            vertexNormZ+= normal[2];
+        }
+        normalVertices.push(vec3(vertexNormX/faces.length,vertexNormY/faces.length,vertexNormZ/faces.length));
+
+    }
 }
 
 //Interacció WASD
@@ -320,6 +377,63 @@ var right = 1.0;
 var ytop = 1.0;
 var bottom = -1.0;
 
+
+//codi Prestat de la llibreria glMatrix-0.9.6.min.js
+function toInverseMat3(a,b){
+    var c=a[0], d=a[1], e=a[2], g=a[4], f=a[5], h=a[6], i=a[8], j=a[9], k=a[10];
+    var l=k*f-h*j, o=-k*g+h*i, m=j*g-f*i, n=c*l+d*o+e*m;
+    if(!n) return null;
+    n=1/n;
+    b||(b=mat3());
+    b[0]=l*n;
+    b[1]=(-k*d+e*j)*n;
+    b[2]=(h*d-e*f)*n;
+    b[3]=o*n;b[4]=(k*c-e*i)*n;
+    b[5]=(-h*c+e*g)*n;
+    b[6]=m*n;b[7]=(-j*c+d*i)*n;
+    b[8]=(f*c-d*g)*n;
+    return b
+};
+
+function setUniforms(){
+    var specularHighlights = document.getElementById("specular").checked;
+        gl.uniform1i(showSpecularHighlightsUniform, specularHighlights);
+
+    var lighting = document.getElementById("lighting").checked;
+        gl.uniform1i(useLightingUniform, lighting);
+        if (lighting) {
+            gl.uniform3f(
+                ambientColorUniform,
+                parseFloat(document.getElementById("ambientR").value),
+                parseFloat(document.getElementById("ambientG").value),
+                parseFloat(document.getElementById("ambientB").value)
+            );
+
+            gl.uniform3f(
+                pointLightingLocationUniform,
+                parseFloat(document.getElementById("lightPositionX").value),
+                parseFloat(document.getElementById("lightPositionY").value),
+                parseFloat(document.getElementById("lightPositionZ").value)
+            );
+
+            gl.uniform3f(
+                pointLightingSpecularColorUniform,
+                parseFloat(document.getElementById("specularR").value),
+                parseFloat(document.getElementById("specularG").value),
+                parseFloat(document.getElementById("specularB").value)
+            );
+
+            gl.uniform3f(
+                pointLightingDiffuseColorUniform,
+                parseFloat(document.getElementById("diffuseR").value),
+                parseFloat(document.getElementById("diffuseG").value),
+                parseFloat(document.getElementById("diffuseB").value)
+            );
+        }
+        gl.uniform1f(materialShininessUniform, parseFloat(document.getElementById("shininess").value));
+
+}
+
 function render()
 {
     handleKeys();
@@ -340,13 +454,14 @@ function render()
 
     gl.uniformMatrix4fv(mvMatrixLoc, false, flatten(mvMatrix) );       
     gl.uniformMatrix4fv(objectTransformationLoc, false, flatten(Identity) );
-    gl.uniformMatrix4fv(projectionMatrixLoc, false, flatten(projectionMatrix) );      
+    gl.uniformMatrix4fv(projectionMatrixLoc, false, flatten(projectionMatrix) );
+
+    var normalMatrix = mat3();
+    toInverseMat3(mvMatrix, normalMatrix);
+    normalMatrix = transpose(normalMatrix);
+    gl.uniformMatrix3fv(uNMatrix, false, flatten(normalMatrix) );     
 
     //Map
-    gl.bindBuffer( gl.ARRAY_BUFFER, cBuffer1  );
-    let vertexColor = gl.getAttribLocation( program, "vColor" );
-    gl.vertexAttribPointer( vertexColor, 4, gl.FLOAT, false, 0, 0 );
-    gl.enableVertexAttribArray( vertexColor );
 
     gl.bindBuffer( gl.ARRAY_BUFFER, vBuffer1 );
     let vertexPos = gl.getAttribLocation(program, "vPosition");
@@ -358,8 +473,16 @@ function render()
     gl.vertexAttribPointer( vTexCoord, 2, gl.FLOAT, false, 0, 0 );
     gl.enableVertexAttribArray( vTexCoord );
 
+    gl.bindBuffer( gl.ARRAY_BUFFER, normalBuffer );
+    let aVertexNormal = gl.getAttribLocation( program, "aVertexNormal" );
+    gl.vertexAttribPointer( aVertexNormal, 3, gl.FLOAT, false, 0, 0 );
+    gl.enableVertexAttribArray( aVertexNormal );
+    
+    
+    setUniforms();
 
-    //carraguem textures
+
+    //carreguem textures
     gl.uniform1i(textureUniform, 0);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, galvanizedTexture);
@@ -367,8 +490,6 @@ function render()
 
    
     gl.drawArrays( gl.TRIANGLES, 0, numVertex1 );
-    //gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
-    // per si necessitem fer un buffer d'elements (ns en q es diferencien)
 
     //drawing the 3d obejcts
     for(var i=0;i<objects3d.length;i++){
@@ -378,9 +499,6 @@ function render()
         
 
     animate();
-
-    objects3d[5].addRotation(1, [1,0,0]);
-    objects3d[4].addRotation(1, [1,0,0]);
 
 
     requestAnimFrame( render );

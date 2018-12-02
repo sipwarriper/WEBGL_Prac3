@@ -18,11 +18,13 @@ class ObjFileObject{
         this.loadObject(fileName);
         this.vertexPos = gl.getAttribLocation(this.program, "vPosition");
         this.vertexTexture = gl.getAttribLocation( this.program, "vTexCoord" );
-        this.vertexColor = gl.getAttribLocation( this.program, "vColor" );
+        // this.vertexColor = gl.getAttribLocation( this.program, "vColor" );
+        this.aVertexNormal = gl.getAttribLocation( this.program, "aVertexNormal" );
 
         gl.enableVertexAttribArray(this.vertexPos);
         gl.enableVertexAttribArray(this.vertexTexture);
-        gl.enableVertexAttribArray(this.vertexColor);        
+        // gl.enableVertexAttribArray(this.vertexColor); 
+        gl.enableVertexAttribArray(this.aVertexNormal); 
     }
 
     handleLoadedObject(fileData) {
@@ -37,10 +39,10 @@ class ObjFileObject{
         gl.bufferData( gl.ARRAY_BUFFER, flatten(colors), gl.STATIC_DRAW );
 
 
-        // this.nBuffer = gl.createBuffer();
-        // gl.bindBuffer(gl.ARRAY_BUFFER, this.nBuffer);
-        // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(fileData.vertexNormals), gl.STATIC_DRAW);
-        // // this.nBuffer.numItems = fileData.vertexNormals.length / 3;
+        this.nBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.nBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(fileData.vertexNormals), gl.STATIC_DRAW);
+        this.nBuffer.numItems = fileData.vertexNormals.length / 3;
 
         this.tBuffer  = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.tBuffer );
@@ -109,9 +111,11 @@ class ObjFileObject{
         gl.bindBuffer( gl.ARRAY_BUFFER, this.tBuffer  );
         gl.vertexAttribPointer(this.vertexTexture, 2, gl.FLOAT, false, 0, 0 ); 
 
-        gl.bindBuffer( gl.ARRAY_BUFFER, this.cBuffer  );
-        gl.vertexAttribPointer(this.vertexColor, 4, gl.FLOAT, false, 0, 0 );
+        // gl.bindBuffer( gl.ARRAY_BUFFER, this.cBuffer  );
+        // gl.vertexAttribPointer(this.vertexColor, 4, gl.FLOAT, false, 0, 0 );
 
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.nBuffer);
+        gl.vertexAttribPointer(this.aVertexNormal , 3, gl.FLOAT, false, 0, 0);
 
         let useTexUniform = gl.getUniformLocation(this.program, "useTexture");
         gl.uniform1i(useTexUniform, 1);
@@ -120,8 +124,6 @@ class ObjFileObject{
 
         let textureUniform = gl.getUniformLocation(this.program, "texture");
         gl.uniform1i(textureUniform, 0);
-
-        // gl.drawArrays( gl.LINES, 0, this.nVertex );
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.iBuffer);
 

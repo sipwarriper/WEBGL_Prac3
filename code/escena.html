@@ -7,23 +7,25 @@
 
 <script id="vertex-shader" type="x-shader/x-vertex">
 
-attribute  vec3 vPosition;
-attribute  vec4 vColor;
-attribute  vec2 vTexCoord;
+attribute vec3 vPosition;
+//attribute vec4 vColor; //stub
+attribute vec3 aVertexNormal; //<---
+attribute vec2 vTexCoord;
 
-varying vec4 fColor;  
-varying vec2 fTexCoord;  
-
-uniform mat4 projectionMatrix;
 uniform mat4 uMVMatrix;
+uniform mat4 projectionMatrix;
 uniform mat4 objectTransformation;
+uniform mat3 uNMatrix;  //<--- 
+varying vec2 fTexCoord;
+varying vec3 vTransformedNormal; //<----
+varying vec4 var_vPosition;
 
 
-void main()
-{
-    fColor = vec4(0.0,0.0,0.0,1.0);
+void main(void) {
+    var_vPosition = uMVMatrix * objectTransformation * vec4(vPosition, 1.0);
+    gl_Position = projectionMatrix * var_vPosition;
     fTexCoord = vTexCoord;
-    gl_Position = projectionMatrix * uMVMatrix * objectTransformation  * vec4(vPosition,1.0);
+    vTransformedNormal = uNMatrix * aVertexNormal;
 }
 </script>
 
@@ -33,17 +35,51 @@ precision mediump float;
 
 varying vec4 fColor;
 varying  vec2 fTexCoord;
+varying vec3 vTransformedNormal;
+varying vec4 var_vPosition;
 
 uniform sampler2D texture;
 uniform bool useTexture;
 
-void main()
-{
-    if (useTexture) {
-        gl_FragColor = texture2D( texture, fTexCoord );
+uniform float uMaterialShininess;
+uniform bool uShowSpecularHighlights;
+uniform bool uUseLighting;
+
+uniform vec3 uAmbientColor;
+
+uniform vec3 uPointLightingLocation;
+uniform vec3 uPointLightingSpecularColor;
+uniform vec3 uPointLightingDiffuseColor;
+
+void main(void) {
+    vec3 lightWeighting;
+    if (!uUseLighting) {
+        lightWeighting = vec3(1.0, 1.0, 1.0);
     } else {
-        gl_FragColor = fColor;
+        vec3 lightDirection = normalize(uPointLightingLocation - var_vPosition.xyz);
+        vec3 normal = normalize(vTransformedNormal);
+
+        float specularLightWeighting = 0.0;
+        if (uShowSpecularHighlights) {
+            vec3 eyeDirection = normalize(-var_vPosition.xyz);
+            vec3 reflectionDirection = reflect(-lightDirection, normal);
+
+            specularLightWeighting = pow(max(dot(reflectionDirection, eyeDirection), 0.0), uMaterialShininess);
+        }
+
+        float diffuseLightWeighting = max(dot(normal, lightDirection), 0.0);
+        lightWeighting = uAmbientColor
+            + uPointLightingSpecularColor * specularLightWeighting
+            + uPointLightingDiffuseColor * diffuseLightWeighting;
     }
+
+    vec4 fragmentColor;
+    if (useTexture) {
+        fragmentColor = texture2D(texture, vec2(fTexCoord.s, fTexCoord.t));
+    } else {
+        fragmentColor = vec4(1.0, 1.0, 1.0, 1.0);
+    }
+    gl_FragColor = vec4(fragmentColor.rgb * lightWeighting, fragmentColor.a);
 }
 </script>
 
@@ -63,6 +99,57 @@ Oops ... your browser doesn't support the HTML5 canvas element
 <br/>  
 Use the cursor keys or WASD to run around, and <code>Page Up</code>/<code>Page Down</code> to
 look up and down.
+<br><br>
+
+<input type="checkbox" id="specular" checked /> Show specular highlight<br/>
+<input type="checkbox" id="lighting" checked /> Use lighting<br/>
+
+
+<h2>Material:</h2>
+
+<table style="border: 0; padding: 10px;">
+    <tr>
+        <td><b>Shininess:</b>
+        <td><input type="text" id="shininess" value="32.0" />
+    </tr>
+</table>
+
+
+<h2>Point light:</h2>
+
+<table style="border: 0; padding: 10px;">
+    <tr>
+        <td><b>Location:</b>
+        <td>X: <input type="text" id="lightPositionX" value="-10.0" />
+        <td>Y: <input type="text" id="lightPositionY" value="4.0" />
+        <td>Z: <input type="text" id="lightPositionZ" value="-20.0" />
+    </tr>
+    <tr>
+        <td><b>Specular colour:</b>
+        <td>R: <input type="text" id="specularR" value="0.8" />
+        <td>G: <input type="text" id="specularG" value="0.8" />
+        <td>B: <input type="text" id="specularB" value="0.8" />
+    </tr>
+    <tr>
+        <td><b>Diffuse colour:</b>
+        <td>R: <input type="text" id="diffuseR" value="0.8" />
+        <td>G: <input type="text" id="diffuseG" value="0.8" />
+        <td>B: <input type="text" id="diffuseB" value="0.8" />
+    </tr>
+</table>
+
+
+<h2>Ambient light:</h2>
+
+<table style="border: 0; padding: 10px;">
+    <tr>
+        <td><b>Colour:</b>
+        <td>R: <input type="text" id="ambientR" value="0.2" />
+        <td>G: <input type="text" id="ambientG" value="0.2" />
+        <td>B: <input type="text" id="ambientB" value="0.2" />
+    </tr>
+</table>
+<br/>
 
 <p>
 <!--
